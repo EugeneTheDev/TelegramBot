@@ -13,14 +13,12 @@ import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.exceptions.TelegramApiException;
 
 
-import java.util.HashSet;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static org.telegram.abilitybots.api.objects.Locality.USER;
-import static org.telegram.abilitybots.api.objects.Privacy.ADMIN;
+import static org.telegram.abilitybots.api.objects.Privacy.CREATOR;
 import static org.telegram.abilitybots.api.objects.Privacy.PUBLIC;
 
 /**
@@ -33,15 +31,12 @@ public class Bot extends AbilityBot {
      * Threads for quick answers to inline queries.
      */
     private ExecutorService service;
-
-    private Set<Integer> admins;
     private int creatorId;
 
     public Bot(String botToken, String botUsername, DefaultBotOptions options, int creatorId, App app) {
         super(botToken, botUsername, options);
         this.creatorId=creatorId;
         this.app=app;
-        admins=new HashSet<>(admins());
         service=Executors.newFixedThreadPool(3);
     }
 
@@ -69,9 +64,8 @@ public class Bot extends AbilityBot {
     public Ability shutdownBot(){
         return Ability.builder()
                 .name("shutdown")
-                .info("shutdown bot")
                 .locality(USER)
-                .privacy(ADMIN)
+                .privacy(CREATOR)
                 .input(0)
                 .action(ctx->app.shutdown())
                 .build();
@@ -110,14 +104,14 @@ public class Bot extends AbilityBot {
      * Send message to all admins on start.
      */
     public void startInform(){
-        admins.forEach(admin->silent.send("Bot has been started.",admin));
+        silent.send("Bot has been started.",creatorId);
     }
 
     /**
      * Send message to all admins on shutdown.
      */
     public void shutdownInform(){
-        admins.forEach(admin->silent.send("Bot has been shutdowned.",admin));
+        silent.send("Bot has been shutdowned.",creatorId);
     }
 
 

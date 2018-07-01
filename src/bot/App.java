@@ -53,8 +53,8 @@ public class App {
             translator =new Translator();
 
             Runtime.getRuntime().addShutdownHook(new Thread(()-> {
-                System.out.println("Bot has been shutdowned.");
                 bot.shutdownInform();
+                System.out.println("Bot has been shutdowned.");
             }));
 
             bot.startInform();
