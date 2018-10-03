@@ -5,11 +5,13 @@ import org.telegram.abilitybots.api.bot.AbilityBot;
 import org.telegram.abilitybots.api.objects.Ability;
 import org.telegram.abilitybots.api.objects.Reply;
 import org.telegram.telegrambots.api.methods.AnswerInlineQuery;
+import org.telegram.telegrambots.api.methods.send.SendMessage;
+import org.telegram.telegrambots.api.objects.Update;
 import org.telegram.telegrambots.api.objects.inlinequery.InlineQuery;
 import org.telegram.telegrambots.api.objects.inlinequery.inputmessagecontent.InputTextMessageContent;
 import org.telegram.telegrambots.api.objects.inlinequery.result.InlineQueryResult;
 import org.telegram.telegrambots.api.objects.inlinequery.result.InlineQueryResultArticle;
-import org.telegram.telegrambots.bots.DefaultBotOptions;
+
 import org.telegram.telegrambots.exceptions.TelegramApiException;
 
 
@@ -33,11 +35,11 @@ public class Bot extends AbilityBot {
     private ExecutorService service;
     private int creatorId;
 
-    public Bot(String botToken, String botUsername, DefaultBotOptions options, int creatorId, App app) {
-        super(botToken, botUsername, options);
+    public Bot(String botToken, String botUsername, int creatorId, App app) {
+        super(botToken, botUsername);
         this.creatorId=creatorId;
         this.app=app;
-        service=Executors.newFixedThreadPool(3);
+        service=Executors.newFixedThreadPool(4);
     }
 
     @Override
@@ -45,6 +47,15 @@ public class Bot extends AbilityBot {
         return creatorId;
     }
 
+    @Override
+    public void onUpdateReceived(Update update) {
+        super.onUpdateReceived(update);
+        service.submit(()->{
+            if(update.hasInlineQuery()) app.newInteraction(update.getInlineQuery().getFrom());
+            else if(update.hasMessage()) app.newInteraction(update.getMessage().getFrom());
+        });
+
+    }
 
     /**
      * Abilities.
@@ -56,8 +67,9 @@ public class Bot extends AbilityBot {
                 .locality(USER)
                 .privacy(PUBLIC)
                 .input(0)
-                .action(ctx->silent.send("Hello",ctx.chatId()))
+                .action(ctx->service.submit(()->silent.send("Hello",ctx.chatId())))
                 .build();
+
 
     }
 
@@ -67,7 +79,18 @@ public class Bot extends AbilityBot {
                 .locality(USER)
                 .privacy(CREATOR)
                 .input(0)
-                .action(ctx->app.shutdown())
+                .action(ctx->service.submit(()->app.shutdown()))
+                .build();
+    }
+
+    public Ability sendStats(){
+        return Ability.builder()
+                .name("stats")
+                .locality(USER)
+                .privacy(CREATOR)
+                .input(0)
+                .action(ctx->service.submit(()->silent.execute(new SendMessage(
+                        ctx.chatId(),app.interactionsStats()).enableHtml(true))))
                 .build();
     }
 

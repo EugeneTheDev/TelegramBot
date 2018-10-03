@@ -12,6 +12,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Translator class.
@@ -22,9 +23,10 @@ public class Translator {
     public String translate(String text){
         String result="";
         try {
+
             HttpClient client=HttpClientBuilder.create().build();
             HttpGet request=new HttpGet(GOOGLE_TRANSLATE.
-                    replace("@",URLEncoder.encode("\""+text+"\"","UTF-8")));
+                    replace("@",URLEncoder.encode("\""+text+"\"", StandardCharsets.UTF_8)));
             request.addHeader("User-Agent", "Mozilla/5.0");
             HttpResponse response=client.execute(request);
             BufferedReader reader=new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
