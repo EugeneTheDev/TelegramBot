@@ -107,71 +107,77 @@ public class App {
      * Interacting with DB.
      */
     public void newInteraction(User newUser){
-       boolean isFound=false;
-       Document findQuery = new Document("name", "totalInteractions"),
-               interactions = collection.find(findQuery).iterator().next();
+        synchronized (collection) {
+            boolean isFound=false;
+            Document findQuery = new Document("name", "totalInteractions"),
+                    interactions = collection.find(findQuery).iterator().next();
 
-       for(Document doc: (List<Document>)interactions.get("users")){
+            for(Document doc: (List<Document>)interactions.get("users")){
 
-           try {
-               User user = mapper.readValue(doc.toJson(), User.class);
-               if(newUser.getId().equals(user.getId())){
-                   isFound=true;
-                   break;
-               }
-           } catch (IOException e) {
-               BotLogger.error("Error when deserialize JSON", e);
-           }
+                try {
+                    User user = mapper.readValue(doc.toJson(), User.class);
+                    if(newUser.getId().equals(user.getId())){
+                        isFound=true;
+                        break;
+                    }
+                } catch (IOException e) {
+                    BotLogger.error("Error when deserialize JSON", e);
+                }
 
-       }
+            }
 
 
-       if(!isFound){
+            if(!isFound){
 
-           try {
-               collection.updateOne(findQuery, new Document("$push",
-                       new Document("users", Document.parse(mapper.writeValueAsString(newUser)))));
-               collection.updateOne(findQuery, new Document("$set",
-                       new Document("count", interactions.getInteger("count")+1)));
+                try {
+                    collection.updateOne(findQuery, new Document("$push",
+                            new Document("users", Document.parse(mapper.writeValueAsString(newUser)))));
+                    collection.updateOne(findQuery, new Document("$set",
+                            new Document("count", interactions.getInteger("count")+1)));
 
-           } catch (JsonProcessingException e) {
-               BotLogger.error("Error when serialize JSON", e);
-           }
+                } catch (JsonProcessingException e) {
+                    BotLogger.error("Error when serialize JSON", e);
+                }
 
-       }
+            }
+        }
 
     }
 
     public String interactionsStats(){
-        StringBuffer buffer = new StringBuffer();
-        Document interactions = collection.find(new Document("name", "totalInteractions")).iterator().next();
-        buffer.append("<strong>Count of interactions:</strong> ")
-                .append(interactions.getInteger("count"))
-                .append("\n")
-                .append("<strong>Users:</strong> ")
-                .append("\n");
+        synchronized (collection) {
+            StringBuffer buffer = new StringBuffer();
+            Document interactions = collection.find(new Document("name", "totalInteractions")).iterator().next();
+            buffer.append("<strong>Count of interactions:</strong> ")
+                    .append(interactions.getInteger("count"))
+                    .append("\n")
+                    .append("<strong>Users:</strong> ")
+                    .append("\n");
 
-        for(Document doc: (List<Document>)interactions.get("users")){
+            for(Document doc: (List<Document>)interactions.get("users")){
 
-            try {
-                User user = mapper.readValue(doc.toJson(),User.class);
-                buffer.append(user.getFirstName());
-                if (user.getLastName()!=null) buffer.append(" ").append(user.getLastName());
-                if (user.getUserName()!=null) buffer.append(" @").append(user.getUserName());
-                buffer.append("\n");
-            } catch (IOException e) {
-                BotLogger.error("Error when deserialize JSON", e);
+                try {
+                    User user = mapper.readValue(doc.toJson(),User.class);
+                    buffer.append(user.getFirstName());
+                    if (user.getLastName()!=null) buffer.append(" ").append(user.getLastName());
+                    if (user.getUserName()!=null) buffer.append(" @").append(user.getUserName());
+                    buffer.append("\n");
+                } catch (IOException e) {
+                    BotLogger.error("Error when deserialize JSON", e);
+                }
+
             }
 
+            return buffer.toString();
         }
-
-        return buffer.toString();
     }
 
     public void clearDB(){
-        Document findQuery = new Document("name", "totalInteractions");
-        collection.updateOne(findQuery, new Document("$set",
-                new Document("count", 0).append("users", new ArrayList())));
+        synchronized (collection) {
+            Document findQuery = new Document("name", "totalInteractions");
+            collection.updateOne(findQuery, new Document("$set",
+                    new Document("count", 0).append("users", new ArrayList())));
+        }
 
     }
 
