@@ -19,6 +19,6 @@ public class ClearTimer extends TimerTask {
 
     @Override
     public void run() {
-        app.clearDB();
+        app.clearInteractionsStats();
     }
 }
