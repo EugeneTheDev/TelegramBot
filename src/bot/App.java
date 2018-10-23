@@ -140,6 +140,10 @@ public class App {
         db.newInteraction(user);
     }
 
+    public void removeFromChat(long chatId, int userId){
+        db.removeFromChat(chatId, userId);
+    }
+
     public String interactionsStats() {
         return db.interactionsStats();
     }

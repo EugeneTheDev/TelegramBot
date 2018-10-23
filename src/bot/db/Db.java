@@ -3,9 +3,12 @@ package bot.db;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.model.*;
 import org.bson.Document;
 import org.telegram.telegrambots.api.objects.User;
 import org.telegram.telegrambots.logging.BotLogger;
+import static com.mongodb.client.model.Filters.*;
+import static com.mongodb.client.model.Updates.*;
 
 import java.io.IOException;
 import java.util.*;
@@ -31,76 +34,126 @@ public class Db {
 
     public void newInteraction(User user){
         synchronized (usersCollection) {
-            boolean isFound = false;
-            Document findQuery = new Document("name", "totalInteractions"),
-                    interactions = usersCollection.find(findQuery).first();
+            ArrayList<WriteModel<Document>> requests = new ArrayList<>();
+            String lastName = user.getLastName(),
+                    username = user.getUserName(), languageCode = user.getLanguageCode();
 
-            for(Document doc: (List<Document>)interactions.get("users")){
-                try {
-                    if(user.getId().equals(mapper.readValue(doc.toJson(), User.class).getId())){
-                        isFound=true;
-                        break;
-                    }
-                } catch (IOException e) {
-                    BotLogger.error("Error when deserializing JSON", e);
-                }
+            try {
+
+                requests.add(
+                        new UpdateOneModel<>(
+                            and(
+                                    eq("name", "totalInteractions"),
+                                    eq("users.id", user.getId()),
+                                    or(
+                                            ne("users.first_name", user.getFirstName()),
+                                            lastName==null?
+                                                    exists("users.last_name"):
+                                                    ne("users.last_name", user.getLastName()),
+                                            username==null?
+                                                    exists("users.username"):
+                                                    ne("users.username", user.getUserName()),
+                                            languageCode==null?
+                                                    exists("users.language_code"):
+                                                    ne("users.language_code", languageCode)
+                                    )
+                            ),
+                            set("users.$", Document.parse(mapper.writeValueAsString(user)))
+                        )
+                );
+
+                requests.add(
+                        new UpdateOneModel<>(
+                                and(
+                                        eq("name", "totalInteractions"),
+                                        ne("users.id", user.getId())
+                                ),
+                                combine(
+                                        addToSet("users", Document.parse(mapper.writeValueAsString(user))),
+                                        inc("count", 1)
+                                )
+                        )
+                );
+
+            } catch (JsonProcessingException e) {
+                BotLogger.error("Error when serializing JSON", e);
             }
 
-
-            if(!isFound){
-                try {
-                    usersCollection.updateOne(findQuery, new Document("$push",
-                                    new Document("users", Document.parse(mapper.writeValueAsString(user))))
-                                    .append("$set",
-                                    new Document("count", interactions.getInteger("count")+1)));
-                } catch (JsonProcessingException e) {
-                    BotLogger.error("Error when serializing JSON", e);
-                }
-            }
+            usersCollection.bulkWrite(requests);
         }
-
     }
 
     public void newMessageInChat(long chatId, User user){
         synchronized (chatsCollection){
-            Document chat = chatsDocument(chatId);
-            boolean isFound = false;
+            ArrayList<WriteModel<Document>> requests = new ArrayList<>();
+            String lastName = user.getLastName(),
+                    username = user.getUserName(), languageCode = user.getLanguageCode();
 
-            if (chat==null)
-                chatsCollection.insertOne(new Document("chatId", chatId).append("couple", "")
-                        .append("nextDate", new Date().getTime())
-                        .append("members", Collections.EMPTY_LIST));
-            else {
+            try {
 
-                ArrayList<Document> members = (ArrayList<Document>) chat.get("members");
+                requests.add(
+                        new UpdateOneModel<>(
+                                and(
+                                        eq("chatId", chatId)
+                                ),
+                                combine(
+                                        setOnInsert("chatId", chatId),
+                                        setOnInsert("couple", ""),
+                                        setOnInsert("nextDate", new Date().getTime()),
+                                        setOnInsert("members", Collections.EMPTY_LIST)
+                                ),
+                                new UpdateOptions().upsert(true)
+                        )
+                );
 
-                for (Document doc : members) {
-                    try {
-                        if (user.getId().equals(mapper.readValue(doc.toJson(), User.class).getId())) {
-                            isFound = true;
-                            break;
-                        }
-                    } catch (IOException e) {
-                        BotLogger.error("Error when deserializing JSON", e);
-                    }
-                }
+                requests.add(
+                        new UpdateOneModel<>(
+                                and(
+                                        eq("chatId", chatId),
+                                        eq("members.id", user.getId()),
+                                        or(
+                                                ne("members.first_name", user.getFirstName()),
+                                                lastName==null?
+                                                        exists("members.last_name"):
+                                                        ne("members.last_name", user.getLastName()),
+                                                username==null?
+                                                        exists("members.username"):
+                                                        ne("members.username", user.getUserName()),
+                                                languageCode==null?
+                                                        exists("members.language_code"):
+                                                        ne("members.language_code", languageCode)
+                                        )
+
+                                ),
+                                set("members.$", Document.parse(mapper.writeValueAsString(user)))
+                        )
+                );
+
+                requests.add(
+                        new UpdateOneModel<>(
+                                eq("chatId", chatId),
+                                addToSet("members", Document.parse(mapper.writeValueAsString(user)))
+                        )
+                );
+
+            } catch (JsonProcessingException e) {
+                BotLogger.error("Error when serializing JSON", e);
             }
 
-            if (!isFound){
-                try {
-                    chatsCollection.updateOne(new Document("chatId", chatId),new Document("$push",
-                            new Document("members", Document.parse(mapper.writeValueAsString(user)))));
-                } catch (JsonProcessingException e) {
-                    BotLogger.error("Error when serializing JSON", e);
-                }
-            }
-
+            chatsCollection.bulkWrite(requests);
         }
+    }
+
+    public void removeFromChat(long chadId, int userId){
+        chatsCollection.updateOne(
+                eq("chatId", chadId),
+                pull("members", eq("id", userId))
+        );
     }
 
     public String interactionsStats(){
         StringBuffer buffer = new StringBuffer();
-        Document interactions = usersCollection.find(new Document("name", "totalInteractions")).iterator().next();
+        Document interactions = usersCollection.find(eq("name", "totalInteractions")).iterator().next();
         buffer.append("<strong>Count of interactions:</strong> ")
                 .append(interactions.getInteger("count"))
                 .append("\n")
@@ -126,9 +179,13 @@ public class Db {
 
     public void clearInteractionsStats(){
         synchronized (usersCollection) {
-            Document findQuery = new Document("name", "totalInteractions");
-            usersCollection.updateOne(findQuery, new Document("$set",
-                    new Document("count", 0).append("users", new ArrayList())));
+            usersCollection.updateOne(
+                    eq("name", "totalInteractions"),
+                    combine(
+                            set("count", 0),
+                            set("users", Collections.EMPTY_LIST)
+                    )
+            );
         }
     }
 
@@ -136,19 +193,21 @@ public class Db {
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(new Date());
         calendar.add(Calendar.HOUR, 12);
-        chatsCollection.updateOne(new Document("chatId", chatId),
-                new Document("$set",new Document("nextDate", calendar.getTimeInMillis())
-                        .append("members", Collections.EMPTY_LIST)
-                        .append("couple", couple)));
-
+        chatsCollection.updateOne(
+                eq("chatId", chatId),
+                combine(
+                        set("nextDate", calendar.getTimeInMillis()),
+                        set("couple", couple)
+                )
+        );
     }
 
     public Document chatsDocument(long chatId){
-        return chatsCollection.find(new Document("chatId",chatId)).first();
+        return chatsCollection.find(eq("chatId",chatId)).first();
     }
 
     public String chatsCouple(long chatId){
-        return chatsCouple(chatsCollection.find(new Document("chatId", chatId)).first());
+        return chatsCouple(chatsCollection.find(eq("chatId", chatId)).first());
     }
 
     public ArrayList<User> membersList(Document doc){

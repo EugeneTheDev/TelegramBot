@@ -10,9 +10,9 @@ public class MessageFormatter {
     private Random random;
 
     private final String[] shippersPhrases = {
-            "Как Тристан и Изольда\nКак Ромео и Джульетта\nКак Сид и Нэнси будут любить друг друга ",
+            "Как Тристан и Изольда,\nКак Ромео и Джульетта,\nКак Сид и Нэнси будут любить друг друга ",
             "Так-так, кто же сегодня сладкая парочка...\nТак вот же она: ",
-            "Купидон уже приготовил свой лук\nПрицелился\nИ пара дня сегодня "
+            "Купидон уже приготовил свой лук,\nПрицелился,\nИ пара дня сегодня "
     };
 
     public MessageFormatter() {
@@ -29,7 +29,7 @@ public class MessageFormatter {
     }
 
     public String lastCouple(String couple){
-        return "Последняя пара: " + couple;
+        return "Последняя пара: " + couple.replaceAll("@", "") + " = \u2764";// \u2764 is heart emoji
     }
 
     public String noLastCouple(){
@@ -41,6 +41,7 @@ public class MessageFormatter {
     }
 
     public String notFirstShipperingGame(String couple){
-        return "Пара дня уже была определена: " + couple;
+        return "Пара дня уже была определена: " + couple.replaceAll("@", "") +
+                " = \u2764";// \u2764 is heart emoji;;
     }
 }
