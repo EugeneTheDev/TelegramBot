@@ -22,16 +22,17 @@ public class ShipperGame {
         if (members.size()<3) throw new TooLessMembersException();
         else {
 
-            int first = random.nextInt(members.size()),second;
-            do second = random.nextInt(members.size());
-            while (second==first);
+            User firstUser, secondUser;
+            do {
+                firstUser = members.get(random.nextInt(members.size()));
+                secondUser = members.get(random.nextInt(members.size()));
+            } while (firstUser.getBot() || secondUser.getBot() || firstUser.getId().equals(secondUser.getId()));
 
             StringBuffer buffer = new StringBuffer();
-            User firstUser = members.get(first), secondUser = members.get(second);
-            if (firstUser.getUserName()!=null) buffer.append("@"+firstUser.getUserName());
+            if (firstUser.getUserName()!=null) buffer.append("@").append(firstUser.getUserName());
             else buffer.append(firstUser.getFirstName());
             buffer.append(" + ");
-            if (secondUser.getUserName()!=null) buffer.append("@"+secondUser.getUserName());
+            if (secondUser.getUserName()!=null) buffer.append("@").append(secondUser.getUserName());
             else buffer.append(secondUser.getFirstName());
 
             return buffer.toString();
