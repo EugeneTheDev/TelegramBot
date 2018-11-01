@@ -67,7 +67,9 @@ public class Bot extends AbilityBot {
                     app.newMessageInChat(message.getChatId(), message.getFrom());
 
                 if (message.getNewChatMembers()!=null && !message.getNewChatMembers().isEmpty())
-                    message.getNewChatMembers().forEach(e->app.newMessageInChat(message.getChatId(), e));
+                    message.getNewChatMembers().forEach(e->{
+                        if(!e.getBot()) app.newMessageInChat(message.getChatId(), e);
+                    });
 
                 if (message.getLeftChatMember()!=null) app.removeFromChat(message.getChatId(),
                         message.getLeftChatMember().getId());
