@@ -1,6 +1,7 @@
 package bot.tasks;
 
-import org.telegram.telegrambots.api.objects.User;
+
+import org.telegram.telegrambots.meta.api.objects.User;
 
 import java.util.ArrayList;
 import java.util.Date;

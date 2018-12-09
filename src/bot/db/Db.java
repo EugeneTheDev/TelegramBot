@@ -5,8 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.*;
 import org.bson.Document;
-import org.telegram.telegrambots.api.objects.User;
-import org.telegram.telegrambots.logging.BotLogger;
+import org.telegram.telegrambots.meta.api.objects.User;
+import org.telegram.telegrambots.meta.logging.BotLogger;
+
 import static com.mongodb.client.model.Filters.*;
 import static com.mongodb.client.model.Updates.*;
 
